@@ -159,3 +159,17 @@ def main():
         else:
             failed += 1
         time.sleep(0.5)
+    print(f"\n--- Summary ---")
+    print(f"Successfully stored: {successful} tracks")
+    print(f"Failed/Skipped: {failed} tracks")
+    
+    conn = sqlite3.connect(db_name)
+    cur = conn.cursor()
+    cur.execute('SELECT COUNT(*) FROM itunes_tracks')
+    total = cur.fetchone()[0]
+    conn.close()
+    print(f"Total iTunes tracks in database: {total}")
+
+
+if __name__ == "__main__":
+    main()
