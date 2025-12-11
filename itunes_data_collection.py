@@ -34,12 +34,16 @@ def create_itunes_tables(db_name='music_weather.db'):
     conn.commit()
     conn.close()
 
-def get_create_genre(cur, g_name):
-    cur.execute('SELECT id FROM genres WHERE g_name = ?', (g_name,))
+def get_or_create_genre(cur, genre_name):
+    cur.execute('SELECT id FROM genres WHERE genre_name = ?', (genre_name,))
     result = cur.fetchone()
     
     if result:
         return result[0]
     else:
-        cur.execute('INSERT INTO genres (g_name) VALUES (?)', (g_name,))
+        cur.execute('INSERT INTO genres (genre_name) VALUES (?)', (genre_name,))
         return cur.lastrowid
+
+def itunes_stats(track_name, artist_name, db_name='music_weather.db'):
+    conn = sqlite3.connect(db_name)
+    cur = conn.cursor()
