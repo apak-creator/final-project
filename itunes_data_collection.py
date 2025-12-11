@@ -47,3 +47,20 @@ def get_or_create_genre(cur, genre_name):
 def itunes_stats(track_name, artist_name, db_name='music_weather.db'):
     conn = sqlite3.connect(db_name)
     cur = conn.cursor()
+    cur.execute('''
+        SELECT id FROM itunes_tracks 
+        WHERE track_name = ? AND artist_name = ?
+    ''', (track_name, artist_name))
+    if cur.fetchone():
+        print(f"Track '{track_name}' by {artist_name} already exists in database.")
+        conn.close()
+        return False
+    base_url = 'https://itunes.apple.com/search'
+    query = f"{track_name} {artist_name}"
+    
+    params = {
+        'term': query,
+        'media': 'music',
+        'entity': 'song',
+        'limit': 5
+    }
