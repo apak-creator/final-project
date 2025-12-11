@@ -108,3 +108,54 @@ def itunes_stats(track_name, artist_name, db_name='music_weather.db'):
             
             conn.commit()
             conn.close()
+
+            print(f"Successfully stored: '{track_name}' by {artist_name}")
+            return True
+        
+        else:
+            print(f"Track '{track_name}' by {artist_name} not found on iTunes.")
+            conn.close()
+            return False
+        
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching data from iTunes API: {e}")
+        conn.close()
+        return False
+
+def get_lastfm_tracks_to_lookup(db_name='music_weather.db', limit=25):
+    conn = sqlite3.connect(db_name)
+    cur = conn.cursor()
+    cur.execute('''
+        SELECT DISTINCT track_name, artist_name 
+        FROM lastfm_tracks 
+        WHERE (track_name, artist_name) NOT IN (
+            SELECT track_name, artist_name FROM itunes_tracks
+        )
+        LIMIT ?
+    ''', (limit,))
+    
+    tracks = cur.fetchall()
+    conn.close()
+    
+    return tracks
+
+def main():
+    create_itunes_tables(db_name)
+    tracks_to_lookup = get_lastfm_tracks_to_lookup(db_name, limit=25)
+    
+    if not tracks_to_lookup:
+        print("No new tracks to look up. All Last.fm tracks have been processed.")
+        return
+    
+    print(f"Found {len(tracks_to_lookup)} tracks to look up on iTunes.")
+    print("Starting data collection (limited to 25 items)...\n")
+    
+    successful = 0
+    failed = 0
+    
+    for track_name, artist_name in tracks_to_lookup:
+        if itunes_stats(track_name, artist_name, db_name):
+            successful += 1
+        else:
+            failed += 1
+        time.sleep(0.5)
