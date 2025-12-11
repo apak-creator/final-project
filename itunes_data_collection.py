@@ -64,3 +64,47 @@ def itunes_stats(track_name, artist_name, db_name='music_weather.db'):
         'entity': 'song',
         'limit': 5
     }
+    try:
+        response = requests.get(base_url, params=params)
+        response.raise_for_status()
+        data = response.json()
+        
+        if data['resultCount'] > 0:
+            # Try to find the best match
+            track_data = None
+            for result in data['results']:
+                if (track_name.lower() in result.get('trackName', '').lower() and 
+                    artist_name.lower() in result.get('artistName', '').lower()):
+                    track_data = result
+                    break
+            if not track_data:
+                track_data = data['results'][0]
+            genre_name = track_data.get('primaryGenreName', 'Unknown')
+            genre_id = get_or_create_genre(cur, genre_name)
+            release_date = track_data.get('releaseDate', '')
+            release_year = None
+            if release_date:
+                try:
+                    release_year = int(release_date.split('-')[0])
+                except:
+                    pass
+            cur.execute('''
+                INSERT INTO itunes_tracks 
+                (track_name, artist_name, collection_name, genre_id, release_date, 
+                 release_year, track_time_millis, track_price, collection_price, country)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                track_data.get('trackName', track_name),
+                track_data.get('artistName', artist_name),
+                track_data.get('collectionName'),
+                genre_id,
+                release_date,
+                release_year,
+                track_data.get('trackTimeMillis'),
+                track_data.get('trackPrice'),
+                track_data.get('collectionPrice'),
+                track_data.get('country')
+            ))
+            
+            conn.commit()
+            conn.close()
