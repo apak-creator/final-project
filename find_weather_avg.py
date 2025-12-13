@@ -46,11 +46,38 @@ def weather_stats(city: str, start_date: str, end_date: str):
         print(f"  Rain: {rain[i]} mm")
         print(f"  Snow: {snow[i]} cm")
         print("-" * 35)
-
+    
     return data
 
+# function for calculating averages from weather_stats
+def find_weather_avg(data):
+    """
+    Calculate and print average max/min temperatures, rain, and snow from weather data.
+    """
+    if not data or "daily" not in data:
+        print("No valid data provided for averages.")
+        return
+
+    max_temps_far = [c_to_f(t) for t in data["daily"]["temperature_2m_max"]] # sorting data by type
+    min_temps_far = [c_to_f(t) for t in data["daily"]["temperature_2m_min"]]
+    rain = data["daily"]["rain_sum"]
+    snow = data["daily"]["snowfall_sum"]
+
+    avg_max = sum(max_temps_far) / len(max_temps_far) # avg. calculations
+    avg_min = sum(min_temps_far) / len(min_temps_far)
+    avg_rain = sum(rain) / len(rain)
+    avg_snow = sum(snow) / len(snow)
+
+    print("\n--- Averages ---")
+    print(f"Average Max Temp: {avg_max:.2f}°F")
+    print(f"Average Min Temp: {avg_min:.2f}°F")
+    print(f"Average Rainfall: {avg_rain:.2f} mm/day")
+    print(f"Average Snowfall: {avg_snow:.2f} cm/day")
+
+# user inputs for location & timeframe
 city = input("Enter a city name: ")
 start_date = input("Enter start date (YYYY-MM-DD): ")
 end_date = input("Enter end date (YYYY-MM-DD): ")
-weather_data = weather_stats(city, start_date, end_date)
 
+weather_data = weather_stats(city, start_date, end_date)
+find_weather_avg(weather_data)
