@@ -140,6 +140,8 @@ def get_lastfm_tracks_to_lookup(db_name='music_weather.db', limit=25):
     return tracks
 
 def main():
+    db_name = 'music_weather.db'
+    
     create_itunes_tables(db_name)
     tracks_to_lookup = get_lastfm_tracks_to_lookup(db_name, limit=25)
     
@@ -159,6 +161,7 @@ def main():
         else:
             failed += 1
         time.sleep(0.5)
+    
     print(f"\n--- Summary ---")
     print(f"Successfully stored: {successful} tracks")
     print(f"Failed/Skipped: {failed} tracks")

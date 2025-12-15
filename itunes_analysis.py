@@ -146,7 +146,7 @@ def itunes_chart(db_name='music_weather.db'):
     print("Scatter plot saved as 'itunes_scatter_plot.png'")
     plt.show()
 
-    def main():
+def main():
     
     print("Running iTunes data analysis...\n")
     
