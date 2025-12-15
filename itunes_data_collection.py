@@ -3,7 +3,7 @@ import requests
 import json
 import time
 
-def create_itunes_tables(db_name='music_weather.db'):
+def create_itunes_tables(db_name='data.db'):
     conn = sqlite3.connect(db_name)
     cur = conn.cursor()
     
@@ -44,7 +44,7 @@ def get_or_create_genre(cur, genre_name):
         cur.execute('INSERT INTO genres (genre_name) VALUES (?)', (genre_name,))
         return cur.lastrowid
 
-def itunes_stats(track_name, artist_name, db_name='music_weather.db'):
+def itunes_stats(track_name, artist_name, db_name='data.db'):
     conn = sqlite3.connect(db_name)
     cur = conn.cursor()
     cur.execute('''
@@ -122,7 +122,7 @@ def itunes_stats(track_name, artist_name, db_name='music_weather.db'):
         conn.close()
         return False
 
-def get_lastfm_tracks_to_lookup(db_name='profiles.db', limit=25):
+def get_lastfm_tracks_to_lookup(db_name='data.db', limit=25):
     """
     Gets tracks from Last.fm tables that haven't been looked up yet.
     """
@@ -147,7 +147,7 @@ def get_lastfm_tracks_to_lookup(db_name='profiles.db', limit=25):
 
 
 def main():
-    db_name = 'profiles.db'
+    db_name = 'data.db'
     
     create_itunes_tables(db_name)
     tracks_to_lookup = get_lastfm_tracks_to_lookup(db_name, limit=25)
