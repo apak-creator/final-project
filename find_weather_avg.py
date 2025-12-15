@@ -1,6 +1,5 @@
 import requests
-
-import requests
+import sqlite3
 
 # converts celsius into fahrenheit
 def c_to_f(c):
