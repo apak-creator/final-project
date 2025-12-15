@@ -86,3 +86,51 @@ def find_music_avg(username, period="7day", db_path=DB_PATH, out_path=None):
     conn = sqlite3.connect(db_path)
     cur = conn.cursor()
     init_db(cur)
+
+    # Get user_id
+    cur.execute("SELECT id FROM users WHERE username = ?", (username,))
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        raise ValueError(
+            f"User '{username}' not found in users table. "
+            f"Run music_stats.py first to store data for this user."
+        )
+    user_id = row[0]
+
+    # Average playcount across all top tracks
+    
+    cur.execute("""
+        SELECT
+            AVG(ltt.playcount) AS avg_playcount,
+            COUNT(*) AS num_toptracks
+        FROM lastfm_toptracks ltt
+        JOIN tracks t ON ltt.track_id = t.id
+        JOIN artists a ON t.artist_id = a.id
+        WHERE ltt.user_id = ?
+          AND ltt.period = ?;
+    """, (user_id, period))
+    avg_playcount, num_toptracks = cur.fetchone()
+    avg_playcount = float(avg_playcount) if avg_playcount is not None else 0.0
+    num_toptracks = int(num_toptracks) if num_toptracks is not None else 0
+
+    # Top artists by total playcount (aggregated)
+    
+    cur.execute("""
+        SELECT
+            a.name AS artist,
+            SUM(ltt.playcount) AS total_playcount,
+            COUNT(*) AS track_count
+        FROM lastfm_toptracks ltt
+        JOIN tracks t ON ltt.track_id = t.id
+        JOIN artists a ON t.artist_id = a.id
+        WHERE ltt.user_id = ?
+          AND ltt.period = ?
+        GROUP BY a.id
+        ORDER BY total_playcount DESC
+        LIMIT 10;
+    """, (user_id, period))
+    top_artists = [
+        {"artist": r[0], "total_playcount": int(r[1]), "num_tracks_in_top": int(r[2])}
+        for r in cur.fetchall()
+    ]
