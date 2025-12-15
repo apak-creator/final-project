@@ -43,6 +43,15 @@ def find_weather_avg(city: str, start_date: str, end_date: str):
     print(f"Average Rainfall: {avg_rain:.2f} mm/day")
     print(f"Average Snowfall: {avg_snow:.2f} cm/day")
 
+    # write averages to a text file
+    with open(f"{city}_weather_summary.txt", "w") as f:
+        f.write(f"Weather Summary for {city} ({start_date} to {end_date})\n")
+        f.write(f"Average Max Temp: {avg_max:.2f}°F\n")
+        f.write(f"Average Min Temp: {avg_min:.2f}°F\n")
+        f.write(f"Average Rainfall: {avg_rain:.2f} mm/day\n")
+        f.write(f"Average Snowfall: {avg_snow:.2f} cm/day\n")
+    print(f"Averages written to {city}_weather_summary.txt")
+
     # loads data for visualizations
     df = pd.read_sql_query("""
         SELECT date, max_temp_f, min_temp_f, rain, snow
