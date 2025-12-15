@@ -50,6 +50,7 @@ def find_itunes_avg(db_name='music_weather.db'):
     print("\n=== Genre Statistics ===")
     for genre, count, avg_len in genre_stats:
         print(f"{genre}: {count} tracks, avg length {round(avg_len, 2)} min")
+        
     with open('itunes_calculations.txt', 'w') as f:
         f.write("=== iTunes Data Calculations ===\n\n")
         f.write(f"Average Track Length: {results['avg_track_length_minutes']} minutes\n")
