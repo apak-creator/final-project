@@ -122,14 +122,20 @@ def itunes_stats(track_name, artist_name, db_name='music_weather.db'):
         conn.close()
         return False
 
-def get_lastfm_tracks_to_lookup(db_name='music_weather.db', limit=25):
+def get_lastfm_tracks_to_lookup(db_name='profiles.db', limit=25):
+    """
+    Gets tracks from Last.fm tables that haven't been looked up yet.
+    """
     conn = sqlite3.connect(db_name)
     cur = conn.cursor()
+    
     cur.execute('''
-        SELECT DISTINCT track_name, artist_name 
-        FROM lastfm_tracks 
-        WHERE (track_name, artist_name) NOT IN (
-            SELECT track_name, artist_name FROM itunes_tracks
+        SELECT DISTINCT t.name AS track_name, a.name AS artist_name
+        FROM tracks t
+        JOIN artists a ON t.artist_id = a.id
+        WHERE NOT EXISTS (
+            SELECT 1 FROM itunes_tracks it
+            WHERE it.track_name = t.name AND it.artist_name = a.name
         )
         LIMIT ?
     ''', (limit,))
@@ -139,8 +145,9 @@ def get_lastfm_tracks_to_lookup(db_name='music_weather.db', limit=25):
     
     return tracks
 
+
 def main():
-    db_name = 'music_weather.db'
+    db_name = 'profiles.db'
     
     create_itunes_tables(db_name)
     tracks_to_lookup = get_lastfm_tracks_to_lookup(db_name, limit=25)

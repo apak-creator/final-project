@@ -1,0 +1,7 @@
+=== iTunes Data Calculations ===
+
+Average Track Length: 0 minutes
+Average Track Price: $0
+Average Release Year: 0
+
+=== Genre Statistics ===
