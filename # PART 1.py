@@ -1,4 +1,4 @@
-# PART 1.1 — Imports & Database Setup
+#music_stats.py
 
 import requests
 import sqlite3
@@ -137,6 +137,44 @@ def collect_api_toptracks(cur, user_id, username, api_key, period, api_page, row
                 INSERT INTO lastfm_toptracks (user_id, period, track_id, playcount)
                 VALUES (?, ?, ?, ?)
             """, (user_id, period, track_id, playcount))
+            inserted += 1
+        except sqlite3.IntegrityError:
+            pass
+
+    return inserted
+
+    #BeautifulSoup (Recent Scrobbles)
+def collect_recent_scrobbles(cur, user_id, username, scrape_page, row_limit):
+    inserted = 0
+
+    url = f"https://www.last.fm/user/{username}/library?page={scrape_page}"
+    soup = BeautifulSoup(requests.get(url, timeout=20).text, "lxml")
+
+    rows = soup.select("tr.chartlist-row")
+
+    for row in rows:
+        if inserted >= row_limit:
+            break
+
+        track_tag = row.select_one(".chartlist-name a")
+        artist_tag = row.select_one(".chartlist-artist a")
+        time_tag = row.select_one(".chartlist-timestamp")
+
+        if not track_tag or not artist_tag:
+            continue
+
+        track_name = track_tag.text.strip()
+        artist_name = artist_tag.text.strip()
+        scrobble_time = time_tag.text.strip() if time_tag else None
+
+        artist_id = get_or_create_id(cur, "artists", "name", artist_name)
+        track_id = get_or_create_track_id(cur, track_name, artist_id)
+
+        try:
+            cur.execute("""
+                INSERT INTO lastfm_recent_scrobbles (user_id, track_id, scrobble_time)
+                VALUES (?, ?, ?)
+            """, (user_id, track_id, scrobble_time))
             inserted += 1
         except sqlite3.IntegrityError:
             pass
