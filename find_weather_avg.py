@@ -1,82 +1,88 @@
-import requests
 import sqlite3
+import seaborn as sns
+import matplotlib.pyplot as plt
+import pandas as pd
 
-# converts celsius into fahrenheit
-def c_to_f(c):
-    return (c * 9/5) + 32
-
-# function for finding raw statistics for weather in a specific timeframe
-def weather_stats(city: str, start_date: str, end_date: str):
-    geo_url = f"https://geocoding-api.open-meteo.com/v1/search?name={city}&count=1" # converts city location to coordinates for Open-Meteo format
-    geo_response = requests.get(geo_url).json()
-    
-    if "results" not in geo_response:
-        print(f"City '{city}' not found.")
-        return None
-
-    latitude = geo_response["results"][0]["latitude"]
-    longitude = geo_response["results"][0]["longitude"]
-    # historical weather
-    weather_url = (
-        "https://archive-api.open-meteo.com/v1/archive?"
-        f"latitude={latitude}&longitude={longitude}"
-        f"&start_date={start_date}&end_date={end_date}"
-        "&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,rain_sum,snowfall_sum"
-        "&timezone=auto"
+def find_weather_avg(city: str, start_date: str, end_date: str):
+    conn = sqlite3.connect("weather.db")
+    # gets city ID from weather.db
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id FROM cities WHERE name = ?",
+        (city,)
     )
+    result = cur.fetchone()
 
-    data = requests.get(weather_url).json()
-
-    if "daily" not in data: # error handling
-        print("No weather data found for this timeframe.")
-        return None
-
-    days = data["daily"]["time"] # sorting data by type
-    max_temps_far = [c_to_f(t) for t in data["daily"]["temperature_2m_max"]]
-    min_temps_far = [c_to_f(t) for t in data["daily"]["temperature_2m_min"]]
-    rain = data["daily"]["rain_sum"]
-    snow = data["daily"]["snowfall_sum"]
-
-    print(f"\nWeather summary for {city} from {start_date} to {end_date}:\n")
-    for i in range(len(days)):
-        print(f"Date: {days[i]}")
-        print(f"  Max Temp: {max_temps_far[i]:.1f}°F")
-        print(f"  Min Temp: {min_temps_far[i]:.1f}°F")
-        print(f"  Rain: {rain[i]} mm")
-        print(f"  Snow: {snow[i]} cm")
-        print("-" * 35)
-    
-    return data
-
-# function for calculating averages from weather_stats
-def find_weather_avg(data):
-    """
-    Calculate and print average max/min temperatures, rain, and snow from weather data.
-    """
-    if not data or "daily" not in data:
-        print("No valid data provided for averages.")
+    if not result:
+        print(f"No data found for city '{city}'.")
+        conn.close()
         return
 
-    max_temps_far = [c_to_f(t) for t in data["daily"]["temperature_2m_max"]] # sorting data by type
-    min_temps_far = [c_to_f(t) for t in data["daily"]["temperature_2m_min"]]
-    rain = data["daily"]["rain_sum"]
-    snow = data["daily"]["snowfall_sum"]
+    city_id = result[0]
 
-    avg_max = sum(max_temps_far) / len(max_temps_far) # avg. calculations
-    avg_min = sum(min_temps_far) / len(min_temps_far)
-    avg_rain = sum(rain) / len(rain)
-    avg_snow = sum(snow) / len(snow)
+    # calculates averages from weather.db
+    cur.execute("""
+        SELECT
+            AVG(max_temp_f),
+            AVG(min_temp_f),
+            AVG(rain),
+            AVG(snow)
+        FROM daily_weather
+        WHERE city_id = ?
+          AND date BETWEEN ? AND ?
+    """, (city_id, start_date, end_date))
+    avg_max, avg_min, avg_rain, avg_snow = cur.fetchone()
+    if avg_max is None:
+        print("No weather records found for that date range.")
+        conn.close()
+        return
 
-    print("\n--- Averages ---")
+    print("\n--- Averages (from database) ---")
     print(f"Average Max Temp: {avg_max:.2f}°F")
     print(f"Average Min Temp: {avg_min:.2f}°F")
     print(f"Average Rainfall: {avg_rain:.2f} mm/day")
     print(f"Average Snowfall: {avg_snow:.2f} cm/day")
 
-# user inputs for location & timeframe
-city = input("Enter a city name: ")
-start_date = input("Enter start date (YYYY-MM-DD): ")
-end_date = input("Enter end date (YYYY-MM-DD): ")
+    # loads data for visualizations
+    df = pd.read_sql_query("""
+        SELECT date, max_temp_f, min_temp_f, rain, snow
+        FROM daily_weather
+        WHERE city_id = ?
+          AND date BETWEEN ? AND ?
+        ORDER BY date
+    """, conn, params=(city_id, start_date, end_date))
 
-weather_data = weather_stats(city, start_date, end_date)
-find_weather_avg(weather_data)
+    conn.close()
+
+    sns.set(style="whitegrid")
+
+    # temps over time chart
+    plt.figure(figsize=(10, 5))
+    sns.lineplot(data=df, x="date", y="max_temp_f", label="Max Temp (°F)")
+    sns.lineplot(data=df, x="date", y="min_temp_f", label="Min Temp (°F)")
+    plt.xticks(rotation=45)
+    plt.title(f"Daily Temperatures in {city}")
+    plt.xlabel("Date")
+    plt.ylabel("Temperature (°F)")
+    plt.tight_layout()
+    plt.show()
+
+    # rain vs snow chart
+    avg_df = pd.DataFrame({
+        "Metric": ["Rain", "Snow"],
+        "Average": [avg_rain, avg_snow]
+    })
+
+    plt.figure(figsize=(6, 4))
+    sns.barplot(data=avg_df, x="Metric", y="Average")
+    plt.title(f"Average Precipitation in {city}")
+    plt.ylabel("Average Amount")
+    plt.tight_layout()
+    plt.show()
+
+if __name__ == "__main__":
+    city = input("Enter a city name: ")
+    start_date = input("Enter start date (YYYY-MM-DD): ")
+    end_date = input("Enter end date (YYYY-MM-DD): ")
+
+    find_weather_avg(city, start_date, end_date)
