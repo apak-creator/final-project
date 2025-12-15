@@ -134,3 +134,69 @@ def find_music_avg(username, period="7day", db_path=DB_PATH, out_path=None):
         {"artist": r[0], "total_playcount": int(r[1]), "num_tracks_in_top": int(r[2])}
         for r in cur.fetchall()
     ]
+
+    # JOIN #3: Top tracks by playcount (with artist names)
+    
+    cur.execute("""
+        SELECT
+            t.name AS track,
+            a.name AS artist,
+            ltt.playcount AS playcount
+        FROM lastfm_toptracks ltt
+        JOIN tracks t ON ltt.track_id = t.id
+        JOIN artists a ON t.artist_id = a.id
+        WHERE ltt.user_id = ?
+          AND ltt.period = ?
+        ORDER BY ltt.playcount DESC
+        LIMIT 10;
+    """, (user_id, period))
+    top_tracks = [
+        {"track": r[0], "artist": r[1], "playcount": int(r[2])}
+        for r in cur.fetchall()
+    ]
+
+    # Extra stat: how many scraped recent scrobbles exist for this user
+    cur.execute("""
+        SELECT
+            COUNT(*) AS num_scrobbles,
+            COUNT(DISTINCT lrs.track_id) AS distinct_tracks
+        FROM lastfm_recent_scrobbles lrs
+        JOIN tracks t ON lrs.track_id = t.id
+        JOIN artists a ON t.artist_id = a.id
+        WHERE lrs.user_id = ?;
+    """, (user_id,))
+    num_scrobbles, distinct_recent_tracks = cur.fetchone()
+    num_scrobbles = int(num_scrobbles) if num_scrobbles is not None else 0
+    distinct_recent_tracks = int(distinct_recent_tracks) if distinct_recent_tracks is not None else 0
+
+    conn.close()
+
+    result = {
+        "username": username,
+        "period": period,
+        "num_toptracks_in_db_for_period": num_toptracks,
+        "avg_playcount_toptracks_for_period": round(avg_playcount, 2),
+        "top_artists_by_total_playcount": top_artists,
+        "top_tracks_by_playcount": top_tracks,
+        "recent_scrobbles_rows_in_db": num_scrobbles,
+        "distinct_recent_tracks_in_db": distinct_recent_tracks
+    }
+
+    if out_path is None:
+        safe_user = username.replace("/", "_").replace("\\", "_")
+        safe_period = period.replace("/", "_").replace("\\", "_")
+        out_path = f"music_avg_{safe_user}_{safe_period}.json"
+
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(result, f, indent=2)
+
+    return result
+
+
+if __name__ == "__main__":
+    user = input("Username: ").strip()
+    period = input("Period (7day, 1month, 3month, etc.): ").strip() or "7day"
+
+    stats = find_music_avg(user, period)
+    print("\n Wrote results to JSON file.")
+    print(stats)
