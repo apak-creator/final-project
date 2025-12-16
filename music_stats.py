@@ -67,7 +67,7 @@ def init_db(cur):
         );
     """)
 
-#Reads users from database
+
 def get_usernames_from_db(db_path=DB_PATH):
     conn = sqlite3.connect(db_path)
     cur = conn.cursor()
@@ -75,8 +75,7 @@ def get_usernames_from_db(db_path=DB_PATH):
     conn.commit()
 
     cur.execute("SELECT username FROM profiles ORDER BY state, city")
-    users = [row[0] for row in cur.fetchall()]
-
+    users = [r[0] for r in cur.fetchall()]
     conn.close()
     return users
 
@@ -88,20 +87,13 @@ def get_or_create_id(cur, table, column, value):
 
 
 def get_or_create_track_id(cur, track_name, artist_id):
-    cur.execute(
-        "INSERT OR IGNORE INTO tracks (name, artist_id) VALUES (?, ?)",
-        (track_name, artist_id)
-    )
-    cur.execute(
-        "SELECT id FROM tracks WHERE name=? AND artist_id=?",
-        (track_name, artist_id)
-    )
+    cur.execute("INSERT OR IGNORE INTO tracks (name, artist_id) VALUES (?, ?)", (track_name, artist_id))
+    cur.execute("SELECT id FROM tracks WHERE name=? AND artist_id=?", (track_name, artist_id))
     return cur.fetchone()[0]
 
-# Last.fm API (Top Tracks)
+
 def collect_api_toptracks(cur, user_id, username, api_key, period, api_page, row_limit):
     inserted = 0
-
     params = {
         "method": "user.getTopTracks",
         "user": username,
@@ -116,8 +108,10 @@ def collect_api_toptracks(cur, user_id, username, api_key, period, api_page, row
     r.raise_for_status()
     data = r.json()
 
-    tracks = data.get("toptracks", {}).get("track", [])
+    if "error" in data:
+        raise ValueError(f"Last.fm error {data.get('error')}: {data.get('message')}")
 
+    tracks = data.get("toptracks", {}).get("track", [])
     for t in tracks:
         if inserted >= row_limit:
             break
@@ -143,13 +137,12 @@ def collect_api_toptracks(cur, user_id, username, api_key, period, api_page, row
 
     return inserted
 
-    #BeautifulSoup (Recent Scrobbles)
+
 def collect_recent_scrobbles(cur, user_id, username, scrape_page, row_limit):
     inserted = 0
-
     url = f"https://www.last.fm/user/{username}/library?page={scrape_page}"
-    soup = BeautifulSoup(requests.get(url, timeout=20).text, "lxml")
-
+    html = requests.get(url, timeout=20).text
+    soup = BeautifulSoup(html, "lxml")
     rows = soup.select("tr.chartlist-row")
 
     for row in rows:
@@ -163,9 +156,9 @@ def collect_recent_scrobbles(cur, user_id, username, scrape_page, row_limit):
         if not track_tag or not artist_tag:
             continue
 
-        track_name = track_tag.text.strip()
-        artist_name = artist_tag.text.strip()
-        scrobble_time = time_tag.text.strip() if time_tag else None
+        track_name = track_tag.get_text(strip=True)
+        artist_name = artist_tag.get_text(strip=True)
+        scrobble_time = time_tag.get_text(strip=True) if time_tag else None
 
         artist_id = get_or_create_id(cur, "artists", "name", artist_name)
         track_id = get_or_create_track_id(cur, track_name, artist_id)
@@ -180,3 +173,48 @@ def collect_recent_scrobbles(cur, user_id, username, scrape_page, row_limit):
             pass
 
     return inserted
+
+
+def music_stats(username, api_key, period="7day", api_page=1, scrape_page=1, max_new_rows=25, db_path=DB_PATH):
+    """
+    PART 1 FUNCTION (required name): music_stats()
+    Inserts <= 25 NEW rows per run total (split between API + scrape).
+    """
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    init_db(cur)
+    conn.commit()
+
+    user_id = get_or_create_id(cur, "users", "username", username)
+
+    api_budget = max_new_rows // 2
+    scrape_budget = max_new_rows - api_budget
+
+    api_added = collect_api_toptracks(cur, user_id, username, api_key, period, api_page, api_budget)
+    conn.commit()
+
+    scrape_added = collect_recent_scrobbles(cur, user_id, username, scrape_page, scrape_budget)
+    conn.commit()
+
+    conn.close()
+
+    return {
+        "username": username,
+        "period": period,
+        "api_page": api_page,
+        "scrape_page": scrape_page,
+        "rows_added_api": api_added,
+        "rows_added_scrape": scrape_added,
+        "rows_added_total": api_added + scrape_added
+    }
+
+
+if __name__ == "__main__":
+    API_KEY = "YOUR_LASTFM_API_KEY"  # paste your key
+
+    users = get_usernames_from_db()
+    if not users:
+        print("No usernames found in profiles table (data.db).")
+    else:
+        for u in users:
+            print(music_stats(u, API_KEY, period="7day", api_page=1, scrape_page=1))
