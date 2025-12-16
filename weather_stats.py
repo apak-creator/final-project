@@ -127,6 +127,6 @@ data, lat, lon = weather_stats(city, start_date, end_date)
 
 if data:
     city_id = get_or_create_city(cur, conn, city, lat, lon)
-    store_daily_weather(cur, conn, city_id, data)
+    store_daily_weather(cur, coAnn, city_id, data)
 
 conn.close()

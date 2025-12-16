@@ -210,7 +210,35 @@ def music_stats(username, api_key, period="7day", api_page=1, scrape_page=1, max
 
 
 if __name__ == "__main__":
-    API_KEY = "YOUR_LASTFM_API_KEY"  # paste your key
+    API_KEY = "1a47f39cf6c81b0fa73a5b7a85bc9c5f"
+
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    init_db(cur)
+    
+    usernames_to_add = [
+        ('marscynic', 'Ann Arbor', 'MI'),
+        ('Camisjamin', 'Grand Rapids', 'MI'),
+        ('brahdy', 'East Lansing', 'MI'),
+        ('voodles', 'Ann Arbor', 'MI'),
+        ('Rowanshear', 'Denton', 'TX'),
+        ('mmmarxie', 'Ann Arbor', 'MI'),
+        ('JacobSwain61', 'Grand Rapids', 'MI'),
+        ('ggWoof', 'Grand Rapids', 'MI'),
+        ('kln0', 'Grand Rapids', 'MI'),
+        ('Suz101', 'Ann Arbor', 'MI'),
+        ('uzier', 'Wyandotte', 'MI')
+    ]
+    
+    for username, city, state in usernames_to_add:
+        cur.execute("""
+            INSERT OR IGNORE INTO profiles (username, city, state)
+            VALUES (?, ?, ?)
+        """, (username, city, state))
+    
+    conn.commit()
+    conn.close()
+    print(f"Ensured {len(usernames_to_add)} profiles exist in database.\n")
 
     users = get_usernames_from_db()
     if not users:
