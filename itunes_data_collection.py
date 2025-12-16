@@ -3,7 +3,7 @@ import requests
 import json
 import time
 
-def create_itunes_tables(db_name='music_weather.db'):
+def create_itunes_tables(db_name='profiles.db'):
     conn = sqlite3.connect(db_name)
     cur = conn.cursor()
     
@@ -13,6 +13,7 @@ def create_itunes_tables(db_name='music_weather.db'):
             genre_name TEXT UNIQUE NOT NULL
         )
     ''')
+    
     cur.execute('''
         CREATE TABLE IF NOT EXISTS itunes_tracks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,17 +45,20 @@ def get_or_create_genre(cur, genre_name):
         cur.execute('INSERT INTO genres (genre_name) VALUES (?)', (genre_name,))
         return cur.lastrowid
 
-def itunes_stats(track_name, artist_name, db_name='music_weather.db'):
+def itunes_stats(track_name, artist_name, db_name='profiles.db'):
     conn = sqlite3.connect(db_name)
     cur = conn.cursor()
+    
     cur.execute('''
         SELECT id FROM itunes_tracks 
         WHERE track_name = ? AND artist_name = ?
     ''', (track_name, artist_name))
+    
     if cur.fetchone():
         print(f"Track '{track_name}' by {artist_name} already exists in database.")
         conn.close()
         return False
+    
     base_url = 'https://itunes.apple.com/search'
     query = f"{track_name} {artist_name}"
     
@@ -64,23 +68,26 @@ def itunes_stats(track_name, artist_name, db_name='music_weather.db'):
         'entity': 'song',
         'limit': 5
     }
+    
     try:
         response = requests.get(base_url, params=params)
         response.raise_for_status()
         data = response.json()
         
         if data['resultCount'] > 0:
-            # Try to find the best match
             track_data = None
             for result in data['results']:
                 if (track_name.lower() in result.get('trackName', '').lower() and 
                     artist_name.lower() in result.get('artistName', '').lower()):
                     track_data = result
                     break
+            
             if not track_data:
                 track_data = data['results'][0]
+            
             genre_name = track_data.get('primaryGenreName', 'Unknown')
             genre_id = get_or_create_genre(cur, genre_name)
+            
             release_date = track_data.get('releaseDate', '')
             release_year = None
             if release_date:
@@ -88,6 +95,7 @@ def itunes_stats(track_name, artist_name, db_name='music_weather.db'):
                     release_year = int(release_date.split('-')[0])
                 except:
                     pass
+            
             cur.execute('''
                 INSERT INTO itunes_tracks 
                 (track_name, artist_name, collection_name, genre_id, release_date, 
@@ -123,9 +131,6 @@ def itunes_stats(track_name, artist_name, db_name='music_weather.db'):
         return False
 
 def get_lastfm_tracks_to_lookup(db_name='profiles.db', limit=25):
-    """
-    Gets tracks from Last.fm tables that haven't been looked up yet.
-    """
     conn = sqlite3.connect(db_name)
     cur = conn.cursor()
     

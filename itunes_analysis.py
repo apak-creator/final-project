@@ -6,24 +6,28 @@ import pandas as pd
 def find_itunes_avg(db_name='profiles.db'):
     conn = sqlite3.connect(db_name)
     cur = conn.cursor()
+    
     cur.execute('''
         SELECT AVG(track_time_millis) / 60000.0 AS avg_track_length_minutes
         FROM itunes_tracks
         WHERE track_time_millis IS NOT NULL
     ''')
     avg_length = cur.fetchone()[0]
+    
     cur.execute('''
         SELECT AVG(track_price) AS avg_track_price
         FROM itunes_tracks
         WHERE track_price IS NOT NULL
     ''')
     avg_price = cur.fetchone()[0]
+    
     cur.execute('''
         SELECT AVG(release_year) AS avg_release_year
         FROM itunes_tracks
         WHERE release_year IS NOT NULL
     ''')
     avg_year = cur.fetchone()[0]
+    
     cur.execute('''
         SELECT g.genre_name, COUNT(*) as track_count, 
                AVG(i.track_time_millis) / 60000.0 as avg_length_minutes
@@ -66,6 +70,7 @@ def find_itunes_avg(db_name='profiles.db'):
 
 def itunes_chart(db_name='profiles.db'):
     conn = sqlite3.connect(db_name)
+    
     query = '''
         SELECT g.genre_name, COUNT(*) as track_count,
                AVG(i.track_time_millis) / 60000.0 as avg_length_minutes
@@ -76,6 +81,7 @@ def itunes_chart(db_name='profiles.db'):
         LIMIT 10
     '''
     genre_df = pd.read_sql_query(query, conn)
+    
     year_query = '''
         SELECT release_year, COUNT(*) as track_count
         FROM itunes_tracks
@@ -84,6 +90,7 @@ def itunes_chart(db_name='profiles.db'):
         ORDER BY release_year
     '''
     year_df = pd.read_sql_query(year_query, conn)
+    
     length_query = '''
         SELECT track_time_millis / 60000.0 as track_length_minutes
         FROM itunes_tracks
@@ -92,6 +99,7 @@ def itunes_chart(db_name='profiles.db'):
     length_df = pd.read_sql_query(length_query, conn)
     
     conn.close()
+    
     sns.set_style("whitegrid")
     sns.set_palette("husl")
 
@@ -116,6 +124,7 @@ def itunes_chart(db_name='profiles.db'):
     axes[1, 0].set_xlabel('Release Year')
     axes[1, 0].set_ylabel('Number of Tracks')
     axes[1, 0].tick_params(axis='x', rotation=45)
+    
     sns.histplot(data=length_df, x='track_length_minutes', 
                  bins=30, kde=True, ax=axes[1, 1], color='teal')
     axes[1, 1].set_title('Distribution of Track Lengths', fontweight='bold')
@@ -128,6 +137,7 @@ def itunes_chart(db_name='profiles.db'):
     plt.show()
 
     plt.figure(figsize=(10, 6))
+    
     scatter_query = '''
         SELECT release_year, track_time_millis / 60000.0 as track_length_minutes
         FROM itunes_tracks
@@ -148,7 +158,6 @@ def itunes_chart(db_name='profiles.db'):
     plt.show()
 
 def main():
-    
     print("Running iTunes data analysis...\n")
     
     results = find_itunes_avg()
