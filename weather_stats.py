@@ -1,8 +1,8 @@
 import requests
 import sqlite3
 
-def init_db(): # creates weather.db & starts cursor
-    conn = sqlite3.connect("weather.db")
+def init_db(): # creates data.db & starts cursor
+    conn = sqlite3.connect("data.db")
     cur = conn.cursor()
 
     cur.execute("""

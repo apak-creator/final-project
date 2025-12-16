@@ -2,7 +2,7 @@
 import sqlite3
 import json
 
-DB_PATH = "profiles.db"
+DB_PATH = "data.db"
 
 
 def init_db(cur):

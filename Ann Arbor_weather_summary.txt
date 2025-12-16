@@ -1,0 +1,5 @@
+Weather Summary for Ann Arbor (2025-01-01 to 2025-02-28)
+Average Max Temp: 24.05°F
+Average Min Temp: 13.01°F
+Average Rainfall: 0.15 mm/day
+Average Snowfall: 0.62 cm/day

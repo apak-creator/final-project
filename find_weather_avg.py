@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 def find_weather_avg(city: str, start_date: str, end_date: str):
-    conn = sqlite3.connect("weather.db")
-    # gets city ID from weather.db
+    conn = sqlite3.connect("data.db")
+    # gets city ID from data.db
     cur = conn.cursor()
     cur.execute(
         "SELECT id FROM cities WHERE name = ?",

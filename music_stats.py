@@ -4,7 +4,7 @@ import requests
 import sqlite3
 from bs4 import BeautifulSoup
 
-DB_PATH = "profiles.db"
+DB_PATH = "data.db"
 LASTFM_API_ROOT = "http://ws.audioscrobbler.com/2.0/"
 
 

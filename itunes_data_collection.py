@@ -3,7 +3,7 @@ import requests
 import json
 import time
 
-def create_itunes_tables(db_name='profiles.db'):
+def create_itunes_tables(db_name='data.db'):
     conn = sqlite3.connect(db_name)
     cur = conn.cursor()
     

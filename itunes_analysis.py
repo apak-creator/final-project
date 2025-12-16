@@ -3,7 +3,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import pandas as pd
 
-def find_itunes_avg(db_name='profiles.db'):
+def find_itunes_avg(db_name='data.db'):
     conn = sqlite3.connect(db_name)
     cur = conn.cursor()
     
